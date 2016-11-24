@@ -136,7 +136,8 @@ end
 
 def no_wizard?(question); !yes_wizard?(question) end
 
-def multiple_choice(question, choices)
+def multiple_choice(question, choices,selected = nil)
+  return selected unless selected.nil?
   say_custom('option', "\033[1m\033[36m" + "#{question}\033[0m")
   values = {}
   choices.each_with_index do |choice,i|
@@ -355,13 +356,48 @@ if options[:verbose]
   print "\nprefs: "  ;p prefs
   print "\nconfig: " ;p config
 end
-
+#prefer
+prefs.merge!({
+  apps4: "none",
+})
+  prefs[:authentication] = "devise"
+  prefs[:authorization] = "roles"
+  prefs[:dashboard] = 'administrate'
+  prefs[:ban_spiders] = false
+  prefs[:better_errors] = true
+  prefs[:database] = 'mysql'
+  prefs[:deployment] = 'capistrano3'
+  prefs[:devise_modules] = false
+  prefs[:dev_webserver] = 'unicorn'
+  prefs[:email] = 'none'
+  prefs[:form_builder] = 'simple_form'
+  prefs[:frontend] = 'bootstrap3'
+  prefs[:layouts] = 'clean_blog'
+  prefs[:pages] = 'about'
+  prefs[:github] = false
+  prefs[:git] = true
+  prefs[:local_env_file] = ''
+  prefs[:prod_webserver] = 'same'
+  prefs[:pry] = false
+  prefs[:templates] = 'haml'
+  prefs[:tests] = 'rspec'
+  prefs[:continuous_testing] = 'rspec'
+  prefs[:locale] = 'zh-CN'
+  prefs[:analytics] = 'none'
+  prefs[:rubocop] = false
+  prefs[:disable_turbolinks] = false
+  prefs[:rvmrc] = true
+  prefs[:announcements] = 'none'
+  prefs[:mysql_username] = 'root'
+  prefs[:mysql_password] = ''
+  prefs[:drop_database] = true
+p prefs
 case Rails::VERSION::MAJOR.to_s
 when "5"
   prefs[:apps4] = multiple_choice "Build a starter application?",
     [["Build a RailsApps example application", "railsapps"],
     ["Contributed applications (none available)", "contributed_app"],
-    ["Custom application (experimental)", "none"]] unless prefs.has_key? :apps4
+    ["Custom application (experimental)", "none"]],"none" unless prefs.has_key? :apps4
   case prefs[:apps4]
     when 'railsapps'
         prefs[:apps4] = multiple_choice "Choose a starter application.",
@@ -376,7 +412,8 @@ when "5"
         ["rails-signup-download", "rails-signup-download"],
         ["rails-stripe-checkout", "rails-stripe-checkout"],
         ["rails-stripe-coupons", "rails-stripe-coupons"],
-        ["rails-stripe-membership-saas", "rails-stripe-membership-saas"]]
+        ["rails-stripe-membership-saas", "rails-stripe-membership-saas"]],
+        "rails-devise-roles"
     when 'contributed_app'
       prefs[:apps4] = multiple_choice "No contributed applications are available.",
         [["create custom application", "railsapps"]]
@@ -388,7 +425,7 @@ when "4"
   when "0"
     say_wizard "Please upgrade to Rails 4.1 or newer."
   else
-    prefs[:apps4] = multiple_choice "Build a starter application?",
+    prefs[:apps4] ||= multiple_choice "Build a starter application?",
       [["Build a RailsApps example application", "railsapps"],
       ["Contributed applications (none available)", "contributed_app"],
       ["Custom application (experimental)", "none"]] unless prefs.has_key? :apps4
@@ -1198,36 +1235,36 @@ gemfile = File.read(destination_root() + '/Gemfile')
 sqlite_detected = gemfile.include? 'sqlite3'
 
 ## Web Server
-prefs[:dev_webserver] = multiple_choice "Web server for development?", [["Puma (default)", "puma"],
+prefs[:dev_webserver] ||= multiple_choice "Web server for development?", [["Puma (default)", "puma"],
   ["Thin", "thin"], ["Unicorn", "unicorn"], ["Phusion Passenger (Apache/Nginx)", "passenger"],
   ["Phusion Passenger (Standalone)", "passenger_standalone"]] unless prefs.has_key? :dev_webserver
-prefs[:prod_webserver] = multiple_choice "Web server for production?", [["Same as development", "same"],
+prefs[:prod_webserver] ||= multiple_choice "Web server for production?", [["Same as development", "same"],
   ["Thin", "thin"], ["Unicorn", "unicorn"], ["Phusion Passenger (Apache/Nginx)", "passenger"],
   ["Phusion Passenger (Standalone)", "passenger_standalone"]] unless prefs.has_key? :prod_webserver
 prefs[:prod_webserver] = prefs[:dev_webserver] if prefs[:prod_webserver] == 'same'
 
 ## Database Adapter
 prefs[:database] = "sqlite" if prefer :database, 'default'
-prefs[:database] = multiple_choice "Database used in development?", [["SQLite", "sqlite"], ["PostgreSQL", "postgresql"],
+prefs[:database] ||= multiple_choice "Database used in development?", [["SQLite", "sqlite"], ["PostgreSQL", "postgresql"],
   ["MySQL", "mysql"]] unless prefs.has_key? :database
 
 ## Template Engine
-prefs[:templates] = multiple_choice "Template engine?", [["ERB", "erb"], ["Haml", "haml"], ["Slim", "slim"]] unless prefs.has_key? :templates
+prefs[:templates] ||= multiple_choice "Template engine?", [["ERB", "erb"], ["Haml", "haml"], ["Slim", "slim"]] unless prefs.has_key? :templates
 
 ## Testing Framework
 if recipes.include? 'tests'
-  prefs[:tests] = multiple_choice "Test framework?", [["None", "none"],
+  prefs[:tests] ||= multiple_choice "Test framework?", [["None", "none"],
     ["RSpec with Capybara", "rspec"]] unless prefs.has_key? :tests
   case prefs[:tests]
     when 'rspec'
       say_wizard "Adding DatabaseCleaner, FactoryGirl, Faker, Launchy, Selenium"
-      prefs[:continuous_testing] = multiple_choice "Continuous testing?", [["None", "none"], ["Guard", "guard"]] unless prefs.has_key? :continuous_testing
+      prefs[:continuous_testing] ||= multiple_choice "Continuous testing?", [["None", "none"], ["Guard", "guard"]] unless prefs.has_key? :continuous_testing
     end
 end
 
 ## Front-end Framework
 if recipes.include? 'frontend'
-  prefs[:frontend] = multiple_choice "Front-end framework?", [["None", "none"],
+  prefs[:frontend] ||= multiple_choice "Front-end framework?", [["None", "none"],
     ["Bootstrap 4.0", "bootstrap4"], ["Bootstrap 3.3", "bootstrap3"], ["Bootstrap 2.3", "bootstrap2"],
     ["Zurb Foundation 5.5", "foundation5"], ["Zurb Foundation 4.0", "foundation4"],
     ["Simple CSS", "simple"]] unless prefs.has_key? :frontend
@@ -1596,6 +1633,7 @@ else
   add_gem 'passenger', :group => :production if prefer :prod_webserver, 'passenger_standalone'
 end
 
+gsub_file 'Gemfile', /rubygems\.org/, 'ruby.taobao.org'
 ## Database Adapter
 gsub_file 'Gemfile', /gem 'sqlite3'\n/, '' unless prefer :database, 'sqlite'
 gsub_file 'Gemfile', /gem 'pg'.*/, ''
